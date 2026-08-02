@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Slice Lab Android APK
 
 on:
   push:
@@ -13,13 +13,21 @@ permissions:
 
 jobs:
   android:
-    name: Export debug APK
+    name: Export Slice Lab debug APK
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install asset tools
+        run: python -m pip install --disable-pip-version-check pillow==11.3.0
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -45,13 +53,10 @@ jobs:
               -dname "CN=Android Debug,O=Android,C=US"
           fi
 
-      - name: Download bundled CC0 characters
-        run: |
-          chmod +x tools/download_cc0_assets.sh
-          ./tools/download_cc0_assets.sh
+      - name: Download realistic CC0 assets
+        run: python tools/download_polyhaven_assets.py
 
       - name: Export with Godot 4.7.1
-        id: export
         uses: firebelley/godot-export@v7.0.0
         env:
           GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /home/runner/.android/debug.keystore
@@ -67,15 +72,30 @@ jobs:
           cache: true
           verbose: true
 
+      - name: Run project smoke test
+        run: |
+          GODOT_BIN="$(find "$HOME/.local/share/godot/godot_executable" -type f -name 'Godot_v4.7.1*' | head -1)"
+          test -n "$GODOT_BIN"
+          set +e
+          timeout 25 "$GODOT_BIN" --headless --path . --quit-after 3 2>&1 | tee /tmp/slice-lab-runtime.log
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          test "$STATUS" -eq 0
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Cannot get class|Couldn't open.*assets/polyhaven|Could not resolve.*texture" /tmp/slice-lab-runtime.log; then
+            echo "Godot runtime validation found a blocking error."
+            exit 1
+          fi
+
       - name: Verify APK
         run: |
-          find . -type f -name "*.apk" -print
-          test -f build/Android/ARASH_Arena.apk
+          find build -type f -name "*.apk" -print
+          test -f build/Android/Slice_Lab.apk
+          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner" verify --verbose build/Android/Slice_Lab.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ARASH-Arena-Android
-          path: build/Android/ARASH_Arena.apk
+          name: Slice-Lab-Android
+          path: build/Android/Slice_Lab.apk
           if-no-files-found: error
           retention-days: 30

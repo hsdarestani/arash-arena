@@ -1,16 +1,12 @@
 # Third-party assets
 
-The game can download or bundle the following public-domain assets:
+The Android CI may bundle these Poly Haven assets:
 
-| Asset | Creator | Source | License |
-|---|---|---|---|
-| Knight character and animations | Kay Lousberg / KayKit | KayKit Character Pack: Adventurers 1.0 | CC0 1.0 Universal |
-| Skeleton Minion character and animations | Kay Lousberg / KayKit | KayKit Character Pack: Skeletons 1.0 | CC0 1.0 Universal |
+| Asset ID | Purpose | License |
+|---|---|---|
+| `lemon` | Realistic lemon model | CC0 |
+| `food_pomegranate_01` | Realistic pomegranate model | CC0 |
+| `food_kiwi_01` | Realistic kiwi model | CC0 |
+| `wood_table_001` | PBR table material | CC0 |
 
-Attribution is not required by CC0, but the creator and source are documented here as a courtesy.
-
-Official repositories:
-- https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0
-- https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0
-
-The procedural fallback meshes, arena, icon, gameplay code and UI in this project were created for ARASH: Arena.
+Poly Haven assets are CC0. A visible in-game credit is included as a courtesy and to make the build-time API source clear.
