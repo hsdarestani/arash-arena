@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""Download compact CC0 Poly Haven assets for the Slice Lab Android build.
-
-The game always has procedural fallbacks, so network/API changes never break CI.
-"""
+"""Download and mobile-optimize CC0 Poly Haven assets for Slice Lab."""
 from __future__ import annotations
 
 import json
@@ -13,11 +10,14 @@ import urllib.parse
 import urllib.request
 from typing import Any, Iterable
 
+from PIL import Image
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 ASSET_ROOT = ROOT / "assets" / "polyhaven"
 USER_AGENT = "SliceLab-Godot/0.2 (+https://github.com/hsdarestani/arash-arena)"
 MODEL_IDS = ("lemon", "food_pomegranate_01", "food_kiwi_01")
 TEXTURE_ID = "wood_table_001"
+MAX_TEXTURE_SIZE = 1024
 
 
 def request_bytes(url: str) -> bytes:
@@ -50,15 +50,25 @@ def urls_in(value: Any) -> list[str]:
 
 def download(url: str, target: pathlib.Path) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
-    with urllib.request.urlopen(
-        urllib.request.Request(url, headers={"User-Agent": USER_AGENT}), timeout=120
-    ) as response, target.open("wb") as output:
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    with urllib.request.urlopen(request, timeout=120) as response, target.open("wb") as output:
         shutil.copyfileobj(response, output)
     print(f"Downloaded {target.relative_to(ROOT)} ({target.stat().st_size / 1024 / 1024:.1f} MB)")
 
 
-def download_model(asset_id: str) -> None:
-    data = request_json(f"https://api.polyhaven.com/files/{asset_id}")
+def optimize_image(path: pathlib.Path) -> None:
+    with Image.open(path) as source:
+        image = source.convert("RGB") if source.mode not in ("RGB", "RGBA") else source.copy()
+        image.thumbnail((MAX_TEXTURE_SIZE, MAX_TEXTURE_SIZE), Image.Resampling.LANCZOS)
+        suffix = path.suffix.lower()
+        if suffix in (".jpg", ".jpeg"):
+            image.convert("RGB").save(path, quality=86, optimize=True, progressive=True)
+        else:
+            image.save(path, optimize=True, compress_level=9)
+    print(f"Optimized {path.relative_to(ROOT)} to {image.width}x{image.height}")
+
+
+def choose_model(data: Any) -> dict[str, Any]:
     candidates: list[tuple[int, dict[str, Any]]] = []
     for path, node in walk(data):
         if not isinstance(node, dict):
@@ -69,25 +79,60 @@ def download_model(asset_id: str) -> None:
         joined = "/".join(path).lower()
         score = 0
         if "1k" in joined:
-            score += 100
+            score += 1000
+        elif "2k" in joined:
+            score += 500
         if "gltf" in joined:
-            score += 30
+            score += 100
         if url.lower().endswith(".gltf"):
-            score += 20
+            score += 30
         candidates.append((score, node))
     if not candidates:
-        raise RuntimeError(f"No glTF candidate found for {asset_id}")
-    _, selected = max(candidates, key=lambda item: item[0])
-    main_url = selected["url"]
+        raise RuntimeError("No glTF candidate found")
+    return max(candidates, key=lambda item: item[0])[1]
+
+
+def resolve_dependency_url(uri: str, urls: list[str]) -> str | None:
+    wanted = pathlib.PurePosixPath(urllib.parse.unquote(uri)).name.lower()
+    exact = [url for url in urls if pathlib.PurePosixPath(urllib.parse.unquote(urllib.parse.urlparse(url).path)).name.lower() == wanted]
+    if exact:
+        return exact[0]
+    stem = pathlib.Path(wanted).stem.lower()
+    partial = [url for url in urls if stem in pathlib.PurePosixPath(urllib.parse.unquote(urllib.parse.urlparse(url).path)).name.lower()]
+    return partial[0] if partial else None
+
+
+def download_model(asset_id: str) -> None:
+    data = request_json(f"https://api.polyhaven.com/files/{asset_id}")
+    selected = choose_model(data)
+    main_url = str(selected["url"])
     extension = pathlib.Path(urllib.parse.urlparse(main_url).path).suffix.lower()
     folder = ASSET_ROOT / asset_id
-    download(main_url, folder / f"{asset_id}{extension}")
-    for dependency_url in urls_in(selected):
-        if dependency_url == main_url:
+    main_target = folder / f"{asset_id}{extension}"
+    download(main_url, main_target)
+    if extension == ".glb":
+        return
+
+    document = json.loads(main_target.read_text(encoding="utf-8"))
+    dependency_urls = urls_in(selected)
+    uris: list[str] = []
+    for buffer in document.get("buffers", []):
+        if isinstance(buffer, dict) and isinstance(buffer.get("uri"), str):
+            uris.append(buffer["uri"])
+    for image in document.get("images", []):
+        if isinstance(image, dict) and isinstance(image.get("uri"), str):
+            uris.append(image["uri"])
+
+    for uri in dict.fromkeys(uris):
+        if uri.startswith("data:"):
             continue
-        name = pathlib.Path(urllib.parse.urlparse(dependency_url).path).name
-        if name:
-            download(dependency_url, folder / name)
+        dependency_url = resolve_dependency_url(uri, dependency_urls)
+        if dependency_url is None:
+            raise RuntimeError(f"Missing dependency URL for {uri}")
+        target = folder / pathlib.PurePosixPath(uri)
+        download(dependency_url, target)
+        if target.suffix.lower() in (".png", ".jpg", ".jpeg"):
+            optimize_image(target)
 
 
 def choose_texture(data: Any, keywords: tuple[str, ...]) -> str | None:
@@ -95,13 +140,13 @@ def choose_texture(data: Any, keywords: tuple[str, ...]) -> str | None:
     for path, node in walk(data):
         if not isinstance(node, dict) or not isinstance(node.get("url"), str):
             continue
-        url = node["url"]
+        url = str(node["url"])
         if not url.lower().endswith((".jpg", ".jpeg", ".png")):
             continue
         joined = "/".join(path).lower()
         if not any(keyword in joined for keyword in keywords):
             continue
-        score = 100 if "1k" in joined else 0
+        score = 1000 if "1k" in joined else 500 if "2k" in joined else 0
         score += 15 if url.lower().endswith((".jpg", ".jpeg")) else 5
         candidates.append((score, url))
     return max(candidates, key=lambda item: item[0])[1] if candidates else None
@@ -118,7 +163,9 @@ def download_table_texture() -> None:
     for filename, keywords in selections.items():
         url = choose_texture(data, keywords)
         if url:
-            download(url, folder / filename)
+            target = folder / filename
+            download(url, target)
+            optimize_image(target)
 
 
 def main() -> int:
