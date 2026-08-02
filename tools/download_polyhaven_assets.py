@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download and mobile-optimize CC0 Poly Haven assets for Slice Lab."""
+"""Download and mobile-optimize CC0/OFL assets used by Dakechi."""
 from __future__ import annotations
 
 import json
@@ -14,10 +14,23 @@ from PIL import Image
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 ASSET_ROOT = ROOT / "assets" / "polyhaven"
-USER_AGENT = "SliceLab-Godot/0.2 (+https://github.com/hsdarestani/arash-arena)"
-MODEL_IDS = ("lemon", "food_pomegranate_01", "food_kiwi_01")
+FONT_ROOT = ROOT / "assets" / "fonts"
+USER_AGENT = "Dakechi-Godot/0.3 (+https://github.com/hsdarestani/arash-arena)"
+MODEL_IDS = (
+    "lemon",
+    "food_pomegranate_01",
+    "food_kiwi_01",
+    "food_apple_01",
+    "yellow_onion",
+    "sweet_potato",
+    "hamburger_buns",
+)
 TEXTURE_ID = "wood_table_001"
 MAX_TEXTURE_SIZE = 1024
+FONT_URLS = {
+    "Vazirmatn-Regular.ttf": "https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/ttf/Vazirmatn-Regular.ttf",
+    "Vazirmatn-Bold.ttf": "https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/ttf/Vazirmatn-Bold.ttf",
+}
 
 
 def request_bytes(url: str) -> bytes:
@@ -51,7 +64,7 @@ def urls_in(value: Any) -> list[str]:
 def download(url: str, target: pathlib.Path) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(request, timeout=120) as response, target.open("wb") as output:
+    with urllib.request.urlopen(request, timeout=150) as response, target.open("wb") as output:
         shutil.copyfileobj(response, output)
     print(f"Downloaded {target.relative_to(ROOT)} ({target.stat().st_size / 1024 / 1024:.1f} MB)")
 
@@ -94,11 +107,20 @@ def choose_model(data: Any) -> dict[str, Any]:
 
 def resolve_dependency_url(uri: str, urls: list[str]) -> str | None:
     wanted = pathlib.PurePosixPath(urllib.parse.unquote(uri)).name.lower()
-    exact = [url for url in urls if pathlib.PurePosixPath(urllib.parse.unquote(urllib.parse.urlparse(url).path)).name.lower() == wanted]
+    exact = [
+        url
+        for url in urls
+        if pathlib.PurePosixPath(urllib.parse.unquote(urllib.parse.urlparse(url).path)).name.lower()
+        == wanted
+    ]
     if exact:
         return exact[0]
     stem = pathlib.Path(wanted).stem.lower()
-    partial = [url for url in urls if stem in pathlib.PurePosixPath(urllib.parse.unquote(urllib.parse.urlparse(url).path)).name.lower()]
+    partial = [
+        url
+        for url in urls
+        if stem in pathlib.PurePosixPath(urllib.parse.unquote(urllib.parse.urlparse(url).path)).name.lower()
+    ]
     return partial[0] if partial else None
 
 
@@ -168,8 +190,14 @@ def download_table_texture() -> None:
             optimize_image(target)
 
 
+def download_fonts() -> None:
+    for filename, url in FONT_URLS.items():
+        download(url, FONT_ROOT / filename)
+
+
 def main() -> int:
     ASSET_ROOT.mkdir(parents=True, exist_ok=True)
+    FONT_ROOT.mkdir(parents=True, exist_ok=True)
     failures: list[str] = []
     for asset_id in MODEL_IDS:
         try:
@@ -182,9 +210,14 @@ def main() -> int:
     except Exception as error:
         failures.append(f"{TEXTURE_ID}: {error}")
         print(f"Warning: {failures[-1]}", file=sys.stderr)
-    print("Poly Haven asset preparation finished.")
+    try:
+        download_fonts()
+    except Exception as error:
+        failures.append(f"fonts: {error}")
+        print(f"Warning: {failures[-1]}", file=sys.stderr)
+    print("Dakechi asset preparation finished.")
     if failures:
-        print("Some optional assets were unavailable; procedural fallbacks will be used.")
+        print("Some optional assets were unavailable; built-in fallbacks will be used.")
     return 0
 
 

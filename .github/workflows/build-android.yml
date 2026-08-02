@@ -1,4 +1,4 @@
-name: Build Slice Lab Android APK
+name: Build Dakechi Android APK
 
 on:
   push:
@@ -13,9 +13,9 @@ permissions:
 
 jobs:
   android:
-    name: Export Slice Lab debug APK
+    name: Export Dakechi debug APK
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
@@ -50,10 +50,10 @@ jobs:
               -keyalg RSA \
               -keysize 2048 \
               -validity 10000 \
-              -dname "CN=Android Debug,O=Android,C=US"
+              -dname "CN=Android Debug,O=Dakechi,C=IR"
           fi
 
-      - name: Download realistic CC0 assets
+      - name: Download realistic CC0 and OFL assets
         run: python tools/download_polyhaven_assets.py
 
       - name: Export with Godot 4.7.1
@@ -77,11 +77,11 @@ jobs:
           GODOT_BIN="$(find "$HOME/.local/share/godot/godot_executable" -type f -name 'Godot_v4.7.1*' | head -1)"
           test -n "$GODOT_BIN"
           set +e
-          timeout 25 "$GODOT_BIN" --headless --path . --quit-after 3 2>&1 | tee /tmp/slice-lab-runtime.log
+          timeout 30 "$GODOT_BIN" --headless --path . --quit-after 4 2>&1 | tee /tmp/dakechi-runtime.log
           STATUS=${PIPESTATUS[0]}
           set -e
           test "$STATUS" -eq 0
-          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Cannot get class|Couldn't open.*assets/polyhaven|Could not resolve.*texture" /tmp/slice-lab-runtime.log; then
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Cannot get class|Invalid call|Invalid access|Couldn't open.*assets|Could not resolve.*texture" /tmp/dakechi-runtime.log; then
             echo "Godot runtime validation found a blocking error."
             exit 1
           fi
@@ -89,13 +89,13 @@ jobs:
       - name: Verify APK
         run: |
           find build -type f -name "*.apk" -print
-          test -f build/Android/Slice_Lab.apk
-          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner" verify --verbose build/Android/Slice_Lab.apk
+          test -f build/Android/Dakechi.apk
+          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner" verify --verbose build/Android/Dakechi.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Slice-Lab-Android
-          path: build/Android/Slice_Lab.apk
+          name: Dakechi-Android
+          path: build/Android/Dakechi.apk
           if-no-files-found: error
           retention-days: 30
