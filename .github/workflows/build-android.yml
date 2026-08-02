@@ -26,6 +26,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install asset tools
+        run: python -m pip install --disable-pip-version-check pillow==11.3.0
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -68,6 +71,20 @@ jobs:
           use_preset_export_path: true
           cache: true
           verbose: true
+
+      - name: Run project smoke test
+        run: |
+          GODOT_BIN="$(find "$HOME/.local/share/godot/godot_executable" -type f -name 'Godot_v4.7.1*' | head -1)"
+          test -n "$GODOT_BIN"
+          set +e
+          timeout 25 "$GODOT_BIN" --headless --path . --quit-after 3 2>&1 | tee /tmp/slice-lab-runtime.log
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          test "$STATUS" -eq 0
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Cannot get class|Couldn't open.*assets/polyhaven|Could not resolve.*texture" /tmp/slice-lab-runtime.log; then
+            echo "Godot runtime validation found a blocking error."
+            exit 1
+          fi
 
       - name: Verify APK
         run: |
