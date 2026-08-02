@@ -7,7 +7,6 @@ config/name="SLICE LAB"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 boot_splash/bg_color=Color(0.012, 0.014, 0.02, 1)
-boot_splash/image="res://icon.svg"
 config/icon="res://icon.svg"
 
 [display]
