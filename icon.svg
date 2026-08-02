@@ -1,23 +1,37 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#111827"/>
-      <stop offset="1" stop-color="#03060b"/>
+      <stop offset="0" stop-color="#3b1020"/>
+      <stop offset="0.5" stop-color="#171425"/>
+      <stop offset="1" stop-color="#090c16"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffe09a"/>
+      <stop offset="1" stop-color="#e98b32"/>
     </linearGradient>
     <linearGradient id="blade" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="0.55" stop-color="#74b8ff"/>
-      <stop offset="1" stop-color="#2166c9"/>
+      <stop offset="0.48" stop-color="#dbe8f4"/>
+      <stop offset="1" stop-color="#71879b"/>
     </linearGradient>
     <radialGradient id="fruit">
-      <stop offset="0" stop-color="#ff7b6c"/>
-      <stop offset="1" stop-color="#a4112d"/>
+      <stop offset="0" stop-color="#f35b68"/>
+      <stop offset="1" stop-color="#8d1028"/>
     </radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="10"/></filter>
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <circle cx="254" cy="258" r="122" fill="url(#fruit)"/>
-  <path d="M258 121c15-42 51-60 91-54-7 42-39 69-91 54z" fill="#4fb85b"/>
-  <path d="M80 394L401 79l31 31L111 425z" fill="url(#blade)"/>
-  <path d="M154 345c59 47 139 47 198-2" fill="none" stroke="#ffccd1" stroke-width="18" stroke-linecap="round" opacity=".9"/>
-  <circle cx="374" cy="153" r="12" fill="#d9f1ff"/>
+  <ellipse cx="256" cy="403" rx="176" ry="28" fill="#ff9d45" opacity=".25" filter="url(#glow)"/>
+  <rect x="78" y="188" width="356" height="220" rx="28" fill="#171b28" stroke="#e7a34b" stroke-width="8"/>
+  <path d="M63 185h386l-31-93H94z" fill="#f0d4a8"/>
+  <path d="M94 92h55l-10 93H63zm110 0h55v93h-65zm110 0h55l20 93h-65z" fill="#9f2037"/>
+  <path d="M91 185h330" stroke="#ffd27b" stroke-width="10" stroke-linecap="round"/>
+  <rect x="101" y="318" width="310" height="68" rx="20" fill="#5f3924" stroke="#d69043" stroke-width="6"/>
+  <circle cx="218" cy="281" r="66" fill="url(#fruit)"/>
+  <path d="M219 212c14-31 41-43 71-37-7 31-30 49-71 37z" fill="#4f9f55"/>
+  <circle cx="218" cy="281" r="18" fill="#ff9faf" opacity=".55"/>
+  <path d="M143 366L370 205l25 35-228 161z" fill="url(#blade)"/>
+  <path d="M136 371l39 37-45 30-34-48z" fill="url(#gold)"/>
+  <circle cx="130" cy="401" r="7" fill="#6c331f"/>
+  <path d="M332 167c20 4 34 19 38 39" fill="none" stroke="#ffca72" stroke-width="9" stroke-linecap="round" opacity=".85"/>
 </svg>
